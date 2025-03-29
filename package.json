@@ -1,0 +1,16 @@
+{
+  "name": "archive-server",
+  "version": "1.0.0",
+  "description": "Сервер для распаковки архивов",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "axios": "1.8.4",
+    "cors": "2.8.5",
+    "express": "4.21.2",
+    "uuid": "11.1.0"
+  }
+}
