@@ -49,6 +49,79 @@ app.post('/extract', async (req, res) => {
   }
 });
 
+app.post('/assistant', async (req, res) => {
+  const { prompt } = req.body;
+
+  if (!prompt) {
+    return res.status(400).json({ error: 'Prompt is required' });
+  }
+
+  try {
+    const threadRes = await axios.post(
+      'https://api.openai.com/v1/threads',
+      { messages: [{ role: 'user', content: prompt }] },
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+          'OpenAI-Beta': 'assistants=v2',
+        },
+      }
+    );
+
+    const threadId = threadRes.data.id;
+
+    const runRes = await axios.post(
+      `https://api.openai.com/v1/threads/${threadId}/runs`,
+      { assistant_id: process.env.ASSISTANT_ID },
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+          'OpenAI-Beta': 'assistants=v2',
+        },
+      }
+    );
+
+    const runId = runRes.data.id;
+
+    let status = 'queued';
+    while (status !== 'completed') {
+      await new Promise(r => setTimeout(r, 1500));
+
+      const checkRes = await axios.get(
+        `https://api.openai.com/v1/threads/${threadId}/runs/${runId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+            'OpenAI-Beta': 'assistants=v2',
+          },
+        }
+      );
+
+      status = checkRes.data.status;
+    }
+
+    const messagesRes = await axios.get(
+      `https://api.openai.com/v1/threads/${threadId}/messages`,
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'OpenAI-Beta': 'assistants=v2',
+        },
+      }
+    );
+
+    const reply = messagesRes.data.data.find(m => m.role === 'assistant')?.content?.[0]?.text?.value;
+
+    res.json({ reply: reply || 'Нет ответа от ассистента.' });
+
+  } catch (err) {
+    console.error('Ошибка при запросе к OpenAI:', err.message);
+    res.status(500).json({ error: 'Ошибка при работе с ассистентом' });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`📦 Archive server running on port ${PORT}`);
