@@ -7,6 +7,7 @@ const { v4: uuidv4 } = require('uuid');
 const { downloadArchive } = require('./modules/download');
 const { extractArchive } = require('./modules/extract');
 const { readExtractedFiles } = require('./modules/read-files');
+require('dotenv').config();
 
 const app = express();
 app.use(express.json());
