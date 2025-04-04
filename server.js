@@ -1,3 +1,4 @@
+const axios = require('axios');
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -8,6 +9,11 @@ const { downloadArchive } = require('./modules/download');
 const { extractArchive } = require('./modules/extract');
 const { readExtractedFiles } = require('./modules/read-files');
 require('dotenv').config();
+
+if (!process.env.OPENAI_API_KEY || !process.env.ASSISTANT_ID) {
+  console.error("❌ Missing .env variables: OPENAI_API_KEY or ASSISTANT_ID");
+  process.exit(1);
+}
 
 const app = express();
 app.use(express.json());
@@ -118,7 +124,7 @@ app.post('/assistant', async (req, res) => {
     res.json({ reply: reply || 'Нет ответа от ассистента.' });
 
   } catch (err) {
-    console.error('Ошибка при запросе к OpenAI:', err.message);
+    console.error('Ошибка при запросе к OpenAI:', err.response?.data || err.message);
     res.status(500).json({ error: 'Ошибка при работе с ассистентом' });
   }
 });
