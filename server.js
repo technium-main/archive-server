@@ -19,10 +19,11 @@ const app = express();
 app.use(express.json());
 
 app.use(cors({
-  origin: '*',
+  origin: 'https://ivashev-education.ru',
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type'],
 }));
+app.options('*', cors());
 
 app.post('/extract', async (req, res) => {
   const { archiveUrl } = req.body;
