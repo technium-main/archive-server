@@ -7,12 +7,7 @@ async function downloadArchive(url, outputPath) {
   const response = await axios({
     url,
     method: 'GET',
-    responseType: 'stream',
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-      'Referer': 'https://ivashev-education.ru/',
-      'Origin': 'https://ivashev-education.ru/'
-    }
+    responseType: 'stream'
   });
   await streamPipeline(response.data, fs.createWriteStream(outputPath));
 }
