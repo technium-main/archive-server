@@ -10,13 +10,7 @@ const { extractArchive } = require('./modules/extract');
 const { readExtractedFiles } = require('./modules/read-files');
 require('dotenv').config();
 
-if (!process.env.OPENAI_API_KEY || !process.env.ASSISTANT_ID) {
-  console.error("❌ Missing .env variables: OPENAI_API_KEY or ASSISTANT_ID");
-  process.exit(1);
-}
-
 const app = express();
-app.use(express.json());
 
 app.use(cors({
   origin: '*',
@@ -24,6 +18,8 @@ app.use(cors({
   allowedHeaders: ['Content-Type'],
 }));
 app.options('*', cors());
+
+app.use(express.json());
 
 app.post('/extract', async (req, res) => {
   const { archiveUrl } = req.body;
