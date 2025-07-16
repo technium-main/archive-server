@@ -54,7 +54,7 @@ app.post('/extract', async (req, res) => {
 });
 
 app.post('/assistant', async (req, res) => {
-  const { prompt } = req.body;
+  const { prompt, assistant_key } = req.body;
 
   if (!prompt) {
     return res.status(400).json({ error: 'Prompt is required' });
@@ -75,9 +75,17 @@ app.post('/assistant', async (req, res) => {
 
     const threadId = threadRes.data.id;
 
+    const assistant_id =
+        (assistant_key === 'qa'
+            ? process.env.QA_ASSISTANT_ID :
+            assistant_key === 'python'
+                ? process.env.PYTHON_ASSISTANT_ID
+                : process.env.FRONTEND_ASSISTANT_ID)
+        || process.env.ASSISTANT_ID;
+
     const runRes = await axios.post(
       `https://api.openai.com/v1/threads/${threadId}/runs`,
-      { assistant_id: process.env.ASSISTANT_ID },
+      { assistant_id },
       {
         headers: {
           'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
