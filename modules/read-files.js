@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const SUPPORTED_EXTENSIONS = ['.js', '.html', '.css', '.json', '.txt'];
+const SUPPORTED_EXTENSIONS = ['.js', '.html', '.css', '.json', '.txt', '.py'];
 
 async function readExtractedFiles(dir) {
   const entries = await fs.promises.readdir(dir, { withFileTypes: true });
