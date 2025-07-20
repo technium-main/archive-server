@@ -99,7 +99,7 @@ app.post('/assistant', async (req, res) => {
               { text: prompt, type: 'text' },
 
               // добавляем изображения для gpt-4o
-              ...imageFiles.map(({ id }) => ({ image_file: id, type: 'image_file' }))
+              ...imageFiles.map(({ id }) => ({ image_file: { file_id: id, detail: 'high' }, type: 'image_file' }))
             ],
 
             // добавляем в аттачи то что может прочитать code_interpreter и file_search
