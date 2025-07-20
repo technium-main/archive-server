@@ -6,6 +6,7 @@ const os = require('os');
 const fs = require('fs');
 const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
+const FileType = require('file-type');
 const { downloadArchive } = require('./modules/download');
 const { extractArchive } = require('./modules/extract');
 const { readExtractedFiles } = require('./modules/read-files');
@@ -67,6 +68,7 @@ app.post('/assistant', async (req, res) => {
   }
 
   // links
+  // TODO добавить работу со ссылками
 
   // нам нужно выцепить из файлов изображения, чтобы не отдавать их code_interpreter и file_search
   // т.к. они их не умеют все равно распознавать
@@ -185,21 +187,42 @@ app.post('/assistant', async (req, res) => {
 });
 
 app.post('/upload', multer().array('files[]'), async (req, res) => {
-  if (!req.files) {
-    return res.status(400).json({ error: 'No files uploaded' });
+  // принимаем файлы, которые не смогли загрузить на клиенте, чтобы загрузить отсюда
+  const filesToDownload = req.body.files_to_download || [];
+  const uploadedFiles = req.files || [];
+
+  if (!uploadedFiles.length && !filesToDownload.length) {
+    return res.status(400).json({error: 'No files provided'});
   }
 
   try {
-    const uploadedFiles = await uploadFiles(req.files);
-    res.json({files: uploadedFiles});
-  } catch (err) {
-    console.error('Error uploading files:', err);
+    const downloadedFiles = await Promise.all(
+      filesToDownload.map(async (url) => {
+        const response = await axios.get(url, {responseType: 'arraybuffer'});
+        const buffer = Buffer.from(response.data);
+        const fileType = await FileType.fileTypeFromBuffer(buffer);
+        const filename = url.split('/').pop() + (fileType?.ext ? `.${fileType.ext}` : '');
 
-    res.status(500).json({ error: 'Error uploading files' });
+        return {
+          buffer,
+          originalname: filename,
+          mimetype: fileType?.mime || response.headers['content-type']
+        };
+      })
+    );
+
+    const allFiles = [...uploadedFiles, ...downloadedFiles];
+    const processedFiles = await uploadFiles(allFiles);
+
+    res.json({files: processedFiles});
+  } catch (err) {
+    console.error('Error processing files:', err);
+    res.status(500).json({error: 'Error processing files'});
   }
 });
 
 const PORT = process.env.PORT || 3000;
+
 app.listen(PORT, async () => {
   console.log(`📦 Archive server running on port ${PORT}`);
 });
