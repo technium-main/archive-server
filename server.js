@@ -198,7 +198,7 @@ app.post('/upload', multer().array('files[]'), async (req, res) => {
   try {
     const downloadedFiles = await Promise.all(
       filesToDownload.map(async (url) => {
-        const response = await axios.get(url, {responseType: 'arraybuffer'});
+        const response = await axios.get(url, { responseType: 'arraybuffer' });
         const buffer = Buffer.from(response.data);
         const fileType = await FileType.fileTypeFromBuffer(buffer);
         const filename = url.split('/').pop() + (fileType?.ext ? `.${fileType.ext}` : '');
@@ -214,7 +214,7 @@ app.post('/upload', multer().array('files[]'), async (req, res) => {
     const allFiles = [...uploadedFiles, ...downloadedFiles];
     const processedFiles = await uploadFiles(allFiles);
 
-    res.json({files: processedFiles});
+    res.json({ files: processedFiles });
   } catch (err) {
     console.error('Error processing files:', err);
     res.status(500).json({error: 'Error processing files'});
@@ -223,6 +223,6 @@ app.post('/upload', multer().array('files[]'), async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, async () => {
+app.listen(PORT, () => {
   console.log(`📦 Archive server running on port ${PORT}`);
 });
