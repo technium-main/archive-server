@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const SUPPORTED_EXTENSIONS = ['.js', '.html', '.css', '.json', '.txt'];
+const { CODE_EXTENSIONS } = require('../helpers/constants');
 
 async function readExtractedFiles(dir) {
   const entries = await fs.promises.readdir(dir, { withFileTypes: true });
@@ -14,7 +14,7 @@ async function readExtractedFiles(dir) {
       files.push(...nested);
     } else {
       const ext = path.extname(entry.name).toLowerCase();
-      if (SUPPORTED_EXTENSIONS.includes(ext)) {
+      if (CODE_EXTENSIONS.includes(ext)) {
         const content = await fs.promises.readFile(fullPath, 'utf-8');
         files.push({ path: path.relative(dir, fullPath), content });
       }

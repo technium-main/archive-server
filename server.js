@@ -4,11 +4,17 @@ const cors = require('cors');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
+const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
+const FileType = require('file-type');
 const { downloadArchive } = require('./modules/download');
 const { extractArchive } = require('./modules/extract');
 const { readExtractedFiles } = require('./modules/read-files');
+const { uploadFiles } = require("./modules/upload-files-to-open-ai");
+const { CODE_EXTENSIONS, IMAGE_EXTENSIONS, ARCHIVE_EXTENSIONS } = require('./helpers/constants');
+
 require('dotenv').config();
+
 
 const app = express();
 
@@ -26,7 +32,7 @@ app.post('/extract', async (req, res) => {
   if (!archiveUrl) return res.status(400).json({ error: 'archiveUrl is required' });
 
   const ext = path.extname(archiveUrl).toLowerCase();
-  if (!['.zip', '.rar', '.7z'].includes(ext)) {
+  if (!ARCHIVE_EXTENSIONS.includes(ext)) {
     return res.status(400).json({ error: 'Unsupported archive type' });
   }
 
@@ -54,16 +60,61 @@ app.post('/extract', async (req, res) => {
 });
 
 app.post('/assistant', async (req, res) => {
-  const { prompt, assistant_key } = req.body;
+  const { prompt, assistant_key, files = [], links } = req.body;
 
   if (!prompt) {
     return res.status(400).json({ error: 'Prompt is required' });
   }
 
+  // links
+  // TODO добавить работу со ссылками
+
+  // нам нужно выцепить из файлов изображения, чтобы не отдавать их code_interpreter и file_search
+  // т.к. они их не умеют все равно распознавать
+  const imageFiles = []
+  const nonImageFiles = []
+
+  files.forEach((file) => {
+    const { filename } = file;
+
+    const ext = path.extname(filename).toLowerCase();
+
+    if (IMAGE_EXTENSIONS.includes(ext)) {
+      imageFiles.push(file)
+    } else {
+      nonImageFiles.push(file)
+    }
+  })
+
   try {
     const threadRes = await axios.post(
       'https://api.openai.com/v1/threads',
-      { messages: [{ role: 'user', content: prompt }] },
+      {
+        messages: [
+          {
+            role: 'user',
+            content: [
+              // добавляем промпт
+              { text: prompt, type: 'text' },
+
+              // добавляем изображения для gpt-4o
+              ...imageFiles.map(({ id }) => ({ image_file: { file_id: id, detail: 'high' }, type: 'image_file' }))
+            ],
+
+            // добавляем в аттачи то что может прочитать code_interpreter и file_search
+            attachments: nonImageFiles.length > 0 ? nonImageFiles.map(({ id, filename }) => {
+              const ext = path.extname(filename).toLowerCase();
+
+              const isCode = CODE_EXTENSIONS.includes(ext)
+
+              return {
+                file_id: id,
+                tools: [ isCode ? { type: 'code_interpreter' } : { type: 'file_search' } ]
+              }
+            }) : []
+          }
+        ]
+      },
       {
         headers: {
           'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -134,7 +185,43 @@ app.post('/assistant', async (req, res) => {
   }
 });
 
+app.post('/upload', multer().array('files[]'), async (req, res) => {
+  // принимаем файлы, которые не смогли загрузить на клиенте, чтобы загрузить отсюда
+  const filesToDownload = req.body.files_to_download || [];
+  const uploadedFiles = req.files || [];
+
+  if (!uploadedFiles.length && !filesToDownload.length) {
+    return res.status(400).json({error: 'No files provided'});
+  }
+
+  try {
+    const downloadedFiles = await Promise.all(
+      filesToDownload.map(async (url) => {
+        const response = await axios.get(url, { responseType: 'arraybuffer' });
+        const buffer = Buffer.from(response.data);
+        const fileType = await FileType.fileTypeFromBuffer(buffer);
+        const filename = url.split('/').pop() + (fileType?.ext ? `.${fileType.ext}` : '');
+
+        return {
+          buffer,
+          originalname: filename,
+          mimetype: fileType?.mime || response.headers['content-type']
+        };
+      })
+    );
+
+    const allFiles = [...uploadedFiles, ...downloadedFiles];
+    const processedFiles = await uploadFiles(allFiles);
+
+    res.json({ files: processedFiles });
+  } catch (err) {
+    console.error('Error processing files:', err);
+    res.status(500).json({error: 'Error processing files'});
+  }
+});
+
 const PORT = process.env.PORT || 3000;
+
 app.listen(PORT, () => {
   console.log(`📦 Archive server running on port ${PORT}`);
 });
