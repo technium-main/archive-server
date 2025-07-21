@@ -11,11 +11,10 @@ const { downloadArchive } = require('./modules/download');
 const { extractArchive } = require('./modules/extract');
 const { readExtractedFiles } = require('./modules/read-files');
 const { uploadFiles } = require("./modules/upload-files-to-open-ai");
+const { CODE_EXTENSIONS, IMAGE_EXTENSIONS, ARCHIVE_EXTENSIONS } = require('./helpers/constants');
+
 require('dotenv').config();
 
-const CODE_EXTENSIONS = ['.html', '.css', '.js', '.py', '.json', '.ts', '.tsx', '.jsx']
-const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
-const ARCHIVE_EXTENSIONS = ['.zip', '.rar', '.7z'];
 
 const app = express();
 
